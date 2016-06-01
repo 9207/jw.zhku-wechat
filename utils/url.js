@@ -12,4 +12,4 @@ exports.scoreDistributeURL = '/jwmis/xscj/Stu_cjfb_rpt.aspx';
 // 四六级成绩地址
 exports.cetScoreURL = '/jwmis/xscj/Stu_djkscj_rpt.aspx';
 // 服务器地址
-exports.serverIP = '120.27.98.202';
+exports.serverIP = ""; // 此处设置你的服务器IP地址

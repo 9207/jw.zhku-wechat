@@ -26,6 +26,7 @@ var app = express();
 
 var host = gUrl.host,
     hostWithHead = 'http://' + gUrl.host,
+    serverWithHead = 'http://' + gUrl.serverIP,
     createTime;
 
 mongoose.connect('mongodb://localhost/test');
@@ -46,9 +47,8 @@ app.use('/wechat', wechat(config, function (req, res, next) {
         type = message.MsgType,
         content = message.Content,
         openid = message.FromUserName;
-        createTime = message.CreateTime;
+    createTime = message.CreateTime; //Todo createTime不应为全局...
     if (type === 'text') {
-        console.log(content);
         User.findOne({
             openId: openid
         }, function (err, user) {
@@ -106,7 +106,7 @@ function downloadLessonPic(session, resx, callback) {
             var $ = cheerio.load(body);
             var hideVC = $("input[name='hidyzm']").val();
             var s = utils.randomString(15),
-                xnxq = 20141;
+                xnxq = 20160; // TODO 不应写死..
             var hidsjyzm = md5("11347" + xnxq + s).toUpperCase();
             request.post({
                 url: hostWithHead + "/jwmis/znpk/Pri_StuSel_rpt.aspx?m=" + s,
@@ -137,7 +137,7 @@ function downloadLessonPic(session, resx, callback) {
                             'Host': host,
                             'Cookie': session
                         }
-                    }).pipe(fs.createWriteStream('./public/score/' + session.toString().substring(18, 28) + '.jpg'));
+                    }).pipe(fs.createWriteStream('./public/kebiao/' + session.toString().substring(18, 28) + '.jpg'));
 
                     stream.on('finish', function () {
                         callback();
@@ -314,9 +314,6 @@ function bindSessionAndOpenId(userName, res) {
         if (response.statusCode == '200') {
             var session = response.headers['set-cookie']; //获取set-cookie字段值
 
-            console.log('获取session成功');
-            console.log('session为' + session);
-
             var newUser = new User({
                 userId: '',
                 password: '',
@@ -375,7 +372,7 @@ function postLoginData(validateCode, user, reqx) {
                     var $ = cheerio.load(result);
                     var loginStatus = $('#divLogNote').text();
                     console.log(loginStatus);
-                    if (!loginStatus.indexOf('正在加载权限')) {
+                    if (!loginStatus.indexOf('正在')) {
                         User.update({openId: user.openId}, {$set: {validateTime: Date.now()}}, function (err, x) {
                             if (err) return console.error(err);
                             console.log('登陆成功');
@@ -423,7 +420,7 @@ function downloadValidateCode(user, res) {
                     res.reply([{
                         title: '回复"验 下图中的验证码"完成登录',
                         description: '登录超时，需要登录重新授权。',
-                        picurl: 'http://120.27.98.202/pic/' + sessionId.toString().substring(18, 28) + '.jpg',
+                        picurl: serverWithHead + '/pic/' + sessionId.toString().substring(18, 28) + '.jpg',
                         url: 'http://nich.work'
                     }]);
                 });
@@ -461,12 +458,10 @@ function parseMessage(s, openId, res) {
 // 绑定教务网后的逻辑模块，s是内容，user是传过来的用户对象，res是回复用的对象
 function parseLoginMessage(s, user, res) {
     s = s.toString().toUpperCase();
-    //console.log('openId: ' + user.openId);
     if (s.indexOf("帮助") != -1) {
         res.reply("1.查询成绩请回复'成绩 学期编码'，如查询本学期的成绩'成绩 20130'、上学期成绩'成绩 20141'\n2.查询课表请回复'课表'\n3.查询入学以来的成绩分布请回复'分布'\n4.查询4、6级成绩请回复 'CET'\n5.解绑教务网帐号请回复'解绑'  ")
     } else {
         if (s.indexOf("解绑") != -1) {
-            console.log('接到解绑命令');
             User.update({
                 openId: user.openId
             }, {
@@ -521,8 +516,8 @@ function parseLoginMessage(s, user, res) {
                 res.reply([{
                     title: '仲恺教务',
                     description: '请点击图片来查看详细课表',
-                    picurl: 'http://120.27.98.202/score/' + user.session.toString().substring(18, 28) + '.jpg',
-                    url: 'http://120.27.98.202/score/' + user.session.toString().substring(18, 28) + '.jpg'
+                    picurl: serverWithHead + "/kebiao/" + user.session.toString().substring(18, 28) + '.jpg',
+                    url: serverWithHead + "/kebiao/" + user.session.toString().substring(18, 28) + '.jpg'
                 }]);
             });
             addLog(user, '查询课表');
