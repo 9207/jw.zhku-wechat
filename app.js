@@ -106,7 +106,7 @@ function downloadLessonPic(session, resx, callback) {
             var $ = cheerio.load(body);
             var hideVC = $("input[name='hidyzm']").val();
             var s = utils.randomString(15),
-                xnxq = 20160; // TODO 不应写死..
+                xnxq = 20140; // TODO 不应写死..
             var hidsjyzm = md5("11347" + xnxq + s).toUpperCase();
             request.post({
                 url: hostWithHead + "/jwmis/znpk/Pri_StuSel_rpt.aspx?m=" + s,
@@ -329,69 +329,73 @@ function bindSessionAndOpenId(userName, res) {
 
 // 发送登录请求，入参为验证码、用户文档和回复用的对象res
 function postLoginData(validateCode, user, reqx) {
-    request.get({
-        url: hostWithHead + "/jwmis/_data/home_login.aspx",
-        headers: {
-            'User-Agent': "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko",
-            'Host': host
-        }
-    }, function (err, response, body) {
-        if (err) return console.error(err);
-        if (response.statusCode == '200') {
-            var $ = cheerio.load(body);
-            var viewState = $("input").first().val();
-            var req = request.post({
-                    url: hostWithHead + "/jwmis/_data/home_login.aspx",
-                    headers: {
-                        'User-Agent': "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko",
-                        'Referer': hostWithHead + "/jwmis/_data/home_login.aspx",
-                        'Cookie': user.session,
-                        'Connection': "Keep-Alive",
-                        'Host': host
+    if (validateCode === undefined)
+        reqx.reply("麻烦按'验 abcd'这种样式填好不好，服务器差点就崩了 QAQ");
+    else {
+        request.get({
+            url: hostWithHead + "/jwmis/_data/home_login.aspx",
+            headers: {
+                'User-Agent': "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko",
+                'Host': host
+            }
+        }, function (err, response, body) {
+            if (err) return console.error(err);
+            if (response.statusCode == '200') {
+                var $ = cheerio.load(body);
+                var viewState = $("input").first().val();
+                var req = request.post({
+                        url: hostWithHead + "/jwmis/_data/home_login.aspx",
+                        headers: {
+                            'User-Agent': "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko",
+                            'Referer': hostWithHead + "/jwmis/_data/home_login.aspx",
+                            'Cookie': user.session,
+                            'Connection': "Keep-Alive",
+                            'Host': host
+                        },
+                        form: {
+                            __VIEWSTATE: viewState,
+                            pcInfo: "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; .NET4.0E; .NET4.0C; .NET CLR 3.5.30729; .NET CLR 2.0.50727; .NET CLR 3.0.30729; rv:11.0) like Geckoundefined5.0 (Windows NT 6.3; WOW64; Trident/7.0; .NET4.0E; .NET4.0C; .NET CLR 3.5.30729; .NET CLR 2.0.50727; .NET CLR 3.0.30729; rv:11.0) like Gecko SN:NULL",
+                            typeName: "学生",
+                            dsdsdsdsdxcxdfgfg: md5(user.userId + md5(user.password).substring(0, 30).toUpperCase() + '11347').substring(0, 30).toUpperCase(),
+                            fgfggfdgtyuuyyuuckjg: md5(md5(validateCode.substring(0, 4).toUpperCase()).substring(0, 30).toUpperCase() + '11347').substring(0, 30).toUpperCase(),
+                            Sel_Type: "STU",
+                            txt_asmcdefsddsd: user.userId
+                        }
                     },
-                    form: {
-                        __VIEWSTATE: viewState,
-                        pcInfo: "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; .NET4.0E; .NET4.0C; .NET CLR 3.5.30729; .NET CLR 2.0.50727; .NET CLR 3.0.30729; rv:11.0) like Geckoundefined5.0 (Windows NT 6.3; WOW64; Trident/7.0; .NET4.0E; .NET4.0C; .NET CLR 3.5.30729; .NET CLR 2.0.50727; .NET CLR 3.0.30729; rv:11.0) like Gecko SN:NULL",
-                        typeName: "学生",
-                        dsdsdsdsdxcxdfgfg: md5(user.userId + md5(user.password).substring(0, 30).toUpperCase() + '11347').substring(0, 30).toUpperCase(),
-                        fgfggfdgtyuuyyuuckjg: md5(md5(validateCode.substring(0, 4).toUpperCase()).substring(0, 30).toUpperCase() + '11347').substring(0, 30).toUpperCase(),
-                        Sel_Type: "STU",
-                        txt_asmcdefsddsd: user.userId
+                    function (err, response, body) {
+                        if (err) return console.error(err);
                     }
-                },
-                function (err, response, body) {
-                    if (err) return console.error(err);
-                }
-            );
-            req.on('response', function (res) {
-                var bufferHelper = new bufferhelper();
-                res.on('data', function (chunk) {
-                    bufferHelper.concat(chunk);
-                }).on('end', function () {
-                    var result = iconv.decode(bufferHelper.toBuffer(), 'GBK');
-                    var $ = cheerio.load(result);
-                    var loginStatus = $('#divLogNote').text();
-                    console.log(loginStatus);
-                    if (!loginStatus.indexOf('正在')) {
-                        User.update({openId: user.openId}, {$set: {validateTime: Date.now()}}, function (err, x) {
-                            if (err) return console.error(err);
-                            console.log('登陆成功');
-                            reqx.reply('登录成功');
-                        });
-                    } else if (!loginStatus.indexOf('验证码')) {
-                        console.log('验证码错误！');
-                        reqx.reply('验证码错误！');
-                    } else if (!loginStatus.indexOf('帐号或密码')) {
-                        console.log('帐号或密码错误！');
-                        reqx.reply("帐号或密码错误！请回复'解绑'来重新绑定教务网帐号和密码！");
-                    } else {
-                        console.log('教务网崩了！');
-                        reqx.reply('教务网崩了！');
-                    }
+                );
+                req.on('response', function (res) {
+                    var bufferHelper = new bufferhelper();
+                    res.on('data', function (chunk) {
+                        bufferHelper.concat(chunk);
+                    }).on('end', function () {
+                        var result = iconv.decode(bufferHelper.toBuffer(), 'GBK');
+                        var $ = cheerio.load(result);
+                        var loginStatus = $('#divLogNote').text();
+                        console.log(loginStatus);
+                        if (!loginStatus.indexOf('正在通过身份验证')) {
+                            User.update({openId: user.openId}, {$set: {validateTime: Date.now()}}, function (err, x) {
+                                if (err) return console.error(err);
+                                console.log('登陆成功');
+                                reqx.reply('登录成功');
+                            });
+                        } else if (!loginStatus.indexOf('验证码')) {
+                            console.log('验证码错误！');
+                            reqx.reply('验证码错误！');
+                        } else if (!loginStatus.indexOf('帐号或密码')) {
+                            console.log('帐号或密码错误！');
+                            reqx.reply("帐号或密码错误！请回复'解绑'来重新绑定教务网帐号和密码！");
+                        } else {
+                            console.log('教务网崩了！' + loginStatus);
+                            reqx.reply('教务网崩了！');
+                        }
+                    });
                 });
-            });
-        }
-    });
+            }
+        });
+    }
 }
 
 // 更新登录有效期，在用户每一下成功的查询操作后都对validateTime进行更新
